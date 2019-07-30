@@ -10,7 +10,7 @@ subject to an additional IP rights grant found at http://polymer.github.io/PATEN
 
 import { css } from 'lit-element';
 
-export const SharedStyles = css`
+export default css`
   :host {
     display: block;
     box-sizing: border-box;

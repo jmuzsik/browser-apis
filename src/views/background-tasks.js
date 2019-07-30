@@ -1,43 +1,50 @@
-import { html, css } from 'lit-element';
+import { html } from 'lit-element';
 import { PageViewElement } from '../components/page-view-element.js';
 
-// These are the shared styles needed by this element.
-import { SharedStyles } from '../styles/shared-styles.js';
+import markdown from '../markdown/background-tasks.js';
+
+import backgroundTasksStyles from '../styles/background-tasks-styles';
+
+function createFallbackRequestIdleCallback(handler) {
+  const startTime = Date.now();
+
+  return setTimeout(function() {
+    handler({
+      didTimeout: false,
+      timeRemaining: function() {
+        return Math.max(0, 50.0 - (Date.now() - startTime));
+      }
+    });
+  }, 1);
+}
 
 class BackgroundTasks extends PageViewElement {
   constructor() {
     super();
 
-    this._taskList = [];
-    this._totalTaskCount = 0;
-    this._currentTaskNumber = 0;
-    this._taskHandle = null;
-    this._logFragment = null;
-    this._statusRefreshScheduled = false;
+    this.taskList = [];
+    this.totalTaskCount = 0;
+    this.currentTaskNumber = 0;
+    this.taskHandle = null;
+    this.logFragment = null;
+    this.statusRefreshScheduled = false;
 
-    this._enqueueTask = this._enqueueTask.bind(this);
-    this._runTaskQueue = this._runTaskQueue.bind(this);
-    this._scheduleStatusRefresh = this._scheduleStatusRefresh.bind(this);
-    this._updateDisplay = this._updateDisplay.bind(this);
-    this._log = this._log.bind(this);
-    this._logTaskHandler = this._logTaskHandler.bind(this);
-    this._getRandomIntInclusive = this._getRandomIntInclusive.bind(this);
-    this._decodeTechnoStuff = this._decodeTechnoStuff.bind(this);
+    this.enqueueTask = this.enqueueTask.bind(this);
+    this.runTaskQueue = this.runTaskQueue.bind(this);
+    this.scheduleStatusRefresh = this.scheduleStatusRefresh.bind(this);
+    this.updateDisplay = this.updateDisplay.bind(this);
+    this.log = this.log.bind(this);
+    this.logTaskHandler = this.logTaskHandler.bind(this);
+    this.getRandomIntInclusive = this.getRandomIntInclusive.bind(this);
+    this.startBackgroundTasks = this.startBackgroundTasks.bind(this);
 
+    // requestIdleCallback, when called, returns an id that is cancellable
+    // in cancelIdleCallback. The id is 1 on first click and then it is a
+    // random-ish number. 1 -> 16 -> 31 -> 42 -> 60 -> 79, different on each run
+    // One thing to realise that if a task is running while another task goes
+    // to interrupt it, the task will finish.
     window.requestIdleCallback =
-      window.requestIdleCallback ||
-      function(handler) {
-        const startTime = Date.now();
-
-        return setTimeout(function() {
-          handler({
-            didTimeout: false,
-            timeRemaining: function() {
-              return Math.max(0, 50.0 - (Date.now() - startTime));
-            }
-          });
-        }, 1);
-      };
+      window.requestIdleCallback || createFallbackRequestIdleCallback();
 
     window.cancelIdleCallback =
       window.cancelIdleCallback ||
@@ -46,77 +53,20 @@ class BackgroundTasks extends PageViewElement {
       };
   }
 
+  // Kind of like componentDidMount
+  async connectedCallback() {
+    // Except you also have to call this
+    super.connectedCallback();
+    // and this
+    await this.updateComplete;
+    // Now the DOM is loaded, so do stuff with it
+    const shadowRoot = this.shadowRoot;
+    const markdownDiv = shadowRoot.querySelector('.markdown');
+    markdownDiv.innerHTML = window.marked(markdown);
+  }
+
   static get styles() {
-    return [
-      SharedStyles,
-      css`
-        .logBox {
-          margin-top: 16px;
-          width: 400px;
-          height: 500px;
-          border-radius: 6px;
-          border: 1px solid black;
-          box-shadow: 4px 4px 2px black;
-        }
-
-        .logHeader {
-          margin: 0;
-          padding: 0 6px 4px;
-          height: 22px;
-          background-color: lightblue;
-          border-bottom: 1px solid black;
-          border-radius: 6px 6px 0 0;
-        }
-
-        #log {
-          font: 12px 'Courier', monospace;
-          padding: 6px;
-          overflow: auto;
-          overflow-y: scroll;
-          width: 388px;
-          height: 460px;
-        }
-
-        .container {
-          width: 400px;
-          padding: 6px;
-          border-radius: 6px;
-          border: 1px solid black;
-          box-shadow: 4px 4px 2px black;
-          display: block;
-          overflow: auto;
-        }
-
-        .label {
-          display: inline-block;
-        }
-
-        .counter {
-          text-align: right;
-          padding-top: 4px;
-          float: right;
-        }
-
-        .button {
-          padding-top: 2px;
-          padding-bottom: 4px;
-          width: 100px;
-          display: inline-block;
-          float: left;
-          border: 1px solid black;
-          cursor: pointer;
-          text-align: center;
-          margin-top: 0;
-          color: white;
-          background-color: darkgreen;
-        }
-
-        #progress {
-          width: 100%;
-          padding-top: 6px;
-        }
-      `
-    ];
+    return backgroundTasksStyles;
   }
 
   render() {
@@ -131,7 +81,6 @@ class BackgroundTasks extends PageViewElement {
           using the <code>requestIdleCallback()</code>
           method.
         </p>
-
         <div class="container">
           <div class="label">
             Decoding quantum filament tachyon emissions...
@@ -140,34 +89,75 @@ class BackgroundTasks extends PageViewElement {
           <button
             class="button"
             id="startButton"
-            @click=${this._decodeTechnoStuff}
+            @click=${this.startBackgroundTasks}
           >
-            Start
+            Start Background Tasks
           </button>
-          <button @click=${this._bigForLoop}>Hi</button>
+          <button
+            class="button"
+            type="button"
+            @click=${this.takeOverTheEventLoop}
+          >
+            Click to take over event loop
+          </button>
           <div class="label counter">
             Task <span id="currentTaskNumber">0</span> of
             <span id="totalTaskCount">0</span>
           </div>
         </div>
-
         <div class="logBox">
           <div class="logHeader">
             Log
           </div>
           <div id="log"></div>
         </div>
+        <div class="markdown" />
       </section>
     `;
   }
 
-  _bigForLoop() {
+  // Something computational expensive to test that
+  // the tasks stop when this is run.
+  takeOverTheEventLoop() {
+    console.warn("I'm taking over the event loop.");
     for (let i = 0; i < 1000000000; i++) {}
   }
 
-  _enqueueTask(taskHandler, taskData) {
-    this._taskList.push({
-      // taskHandler is this._logTaskHandler
+  /**
+   * Basic premise:
+   *  Create a bunch of tasks and subtasks for those tasks (100's of each)
+   *  to be rendered to the DOM as mildly expensive computations. Each of these
+   *  computations are a single task in the Background Tasks API. Each task only
+   *  runs during idle time in the browser. The task finishes, then the next
+   *  task is to be done, which does not run until the next idle time in the
+   *  browser. This repeats until all tasks are finished.
+   *
+   */
+
+  startBackgroundTasks() {
+    console.info('Background Tasks have begun.');
+    // Subtlety: Data is reset if start is clicked multiple times repeated clicks.
+    this.totalTaskCount = 0;
+    this.currentTaskNumber = 0;
+    this.updateDisplay();
+
+    // Create a bunch of tasks.
+    const n = this.getRandomIntInclusive(200, 400);
+    for (let i = 0; i < n; i++) {
+      const taskData = {
+        // The amount of elements that will be created in this task.
+        count: this.getRandomIntInclusive(150, 300),
+        // The text that will be rendered in the element.
+        text: `This text is from task number ${(i + 1).toString()} of ${n}`
+      };
+      this.enqueueTask(this.logTaskHandler, taskData);
+    }
+  }
+
+  // Adds to task queue.
+  enqueueTask(taskHandler, taskData) {
+    this.taskList.push({
+      // taskHandler is this.logTaskHandler
       handler: taskHandler,
       /*
         An object as so:
@@ -178,48 +168,71 @@ class BackgroundTasks extends PageViewElement {
       */
       data: taskData
     });
-    // The length of _taskList
-    this._totalTaskCount++;
-    // It is only null when the component first renders
-    if (!this._taskHandle) {
-      // requestIdleCallback returns an id that is cancellable in cancelIdleCallback
-      // The id is 1 on first click and then it by a randomish number... 
-      // 1 -> 16 -> 31 -> 42 -> 60 -> 79, different on each run
-      this._taskHandle = requestIdleCallback(this._runTaskQueue);
+
+    // Keep track of length of list
+    this.totalTaskCount++;
+    // It is only null when the component first renders.
+    // It is to start a Background Task.
+    if (!this.taskHandle) {
+      this.taskHandle = requestIdleCallback(this.runTaskQueue);
     }
 
-    this._scheduleStatusRefresh();
+    this.scheduleStatusRefresh();
   }
 
-  _runTaskQueue(deadline) {
-    while (
-      (deadline.timeRemaining() > 0 || deadline.didTimeout) &&
-      this._taskList.length
-    ) {
-      const task = this._taskList.shift();
-      this._currentTaskNumber++;
+  // requestIdleCallback's callback.
+  runTaskQueue(deadline) {
+    console.info(`This round of JS begins at ${this.currentTaskNumber}.`);
+    while (deadline.timeRemaining() > 0 && this.taskList.length) {
+      // deadline.timeRemaining() runs repeatedly, until it is equal
+      // to 0. It slowly decreases... 12.465 -> 11.26 -> etc.
+      const task = this.taskList.shift();
+      this.currentTaskNumber++;
 
+      // This creates the DOM elements but does not log them.
       task.handler(task.data);
-      this._scheduleStatusRefresh();
+      // This adds the created elements to the DOM with requestAnimationFrame.
+      this.scheduleStatusRefresh();
     }
-
-    if (this._taskList.length) {
-      this._taskHandle = requestIdleCallback(this._runTaskQueue);
+    console.info(`And ends at ${this.currentTaskNumber}.`);
+    // Then run the next task.
+    if (this.taskList.length) {
+      this.taskHandle = requestIdleCallback(this.runTaskQueue);
     } else {
-      this._taskHandle = 0;
+      this.taskHandle = 0;
     }
   }
 
-  _scheduleStatusRefresh() {
-    // TODO: when is this true?
-    if (!this._statusRefreshScheduled) {
-      requestAnimationFrame(this._updateDisplay);
-      this._statusRefreshScheduled = true;
+  // Creation of DOM elements, to be added to the DOM later.
+  logTaskHandler(data) {
+    this.log('<strong>Running task #' + this.currentTaskNumber + '</strong>');
+
+    for (let i = 0; i < data.count; i += 1) {
+      this.log((i + 1).toString() + '. ' + data.text);
     }
   }
 
-  _updateDisplay() {
-    // Cannot access elements outside of the shadow DOM
+  log(text) {
+    if (!this.logFragment) {
+      this.logFragment = document.createDocumentFragment();
+    }
+
+    const el = document.createElement('div');
+    el.innerHTML = text;
+    this.logFragment.appendChild(el);
+  }
+
+  // requestAnimationFrame.
+  scheduleStatusRefresh() {
+    if (!this.statusRefreshScheduled) {
+      requestAnimationFrame(this.updateDisplay);
+      this.statusRefreshScheduled = true;
+    }
+  }
+
+  // All DOM stuff happens in here.
+  updateDisplay() {
+    // Cannot access elements inside the shadow DOM from outside of it.
     const shadowRoot = this.shadowRoot;
     const logElem = shadowRoot.getElementById('log');
     const progressBarElem = shadowRoot.getElementById('progress');
@@ -231,76 +244,33 @@ class BackgroundTasks extends PageViewElement {
     // All this really does is scroll to the end of all the content that is rendered.
     const scrolledToEnd =
       logElem.scrollHeight - logElem.clientHeight <= logElem.scrollTop + 1;
-    // This is only true on the first render.
-    if (this._totalTaskCount) {
-      if (progressBarElem.max != this._totalTaskCount) {
-        totalTaskCountElem.textContent = this._totalTaskCount;
-        progressBarElem.max = this._totalTaskCount;
+    // This is only false on the first render.
+    if (this.totalTaskCount) {
+      if (progressBarElem.max !== this.totalTaskCount) {
+        totalTaskCountElem.textContent = this.totalTaskCount;
+        progressBarElem.max = this.totalTaskCount;
       }
 
-      if (progressBarElem.value != this._currentTaskNumber) {
-        currentTaskNumberElem.textContent = this._currentTaskNumber;
-        progressBarElem.value = this._currentTaskNumber;
+      if (progressBarElem.value !== this.currentTaskNumber) {
+        currentTaskNumberElem.textContent = this.currentTaskNumber;
+        progressBarElem.value = this.currentTaskNumber;
       }
     }
-
-    if (this._logFragment) {
-      logElem.appendChild(this._logFragment);
-      this._logFragment = null;
+    if (this.logFragment) {
+      logElem.appendChild(this.logFragment);
+      this.logFragment = null;
     }
 
     if (scrolledToEnd) {
       logElem.scrollTop = logElem.scrollHeight - logElem.clientHeight;
     }
-    this._statusRefreshScheduled = false;
+    this.statusRefreshScheduled = false;
   }
 
-  _log(text) {
-    if (!this._logFragment) {
-      this._logFragment = document.createDocumentFragment();
-    }
-
-    const el = document.createElement('div');
-    el.innerHTML = text;
-    this._logFragment.appendChild(el);
-  }
-
-  //
-  _logTaskHandler(data) {
-    this._log('<strong>Running task #' + this._currentTaskNumber + '</strong>');
-
-    for (let i = 0; i < data.count; i += 1) {
-      this._log((i + 1).toString() + '. ' + data.text);
-    }
-  }
-
-  // Does exactly what it says.
-  _getRandomIntInclusive(min, max) {
+  getRandomIntInclusive(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
-  }
-
-  // This is the first function run when start is clicked.
-  _decodeTechnoStuff() {
-    // This is done to reset data if start is clicked twice..
-    this._totalTaskCount = 0;
-    this._currentTaskNumber = 0;
-    // TODO: figure out exactly why this is called again
-    this._updateDisplay();
-
-    // Random # btw 100 and 200 which will specify the amount of tasks
-    const n = this._getRandomIntInclusive(100, 200);
-    for (let i = 0; i < n; i++) {
-      // The data that will be run in the task.
-      const taskData = {
-        // How many elements will render during each task.
-        count: this._getRandomIntInclusive(75, 150),
-        // The text shown in the elements rendered.
-        text: `This text is from task number ${(i + 1).toString()} of ${n}`
-      };
-      this._enqueueTask(this._logTaskHandler, taskData);
-    }
   }
 }
 
