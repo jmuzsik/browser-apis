@@ -70,6 +70,9 @@ class TheApp extends connect(store)(LitElement) {
             href="/background-tasks"
             >Background Tasks</a
           >
+          <a ?selected="${this._page === 'beacon-api'}" href="/beacon-api"
+            >Beacon Api</a
+          >
         </nav>
       </app-header>
 
@@ -84,6 +87,9 @@ class TheApp extends connect(store)(LitElement) {
             href="/background-tasks"
             >Background Tasks</a
           >
+          <a ?selected="${this._page === 'beacon-api'}" href="/beacon-api"
+            >Beacon API</a
+          >
         </nav>
       </app-drawer>
 
@@ -93,6 +99,10 @@ class TheApp extends connect(store)(LitElement) {
           class="page"
           ?active="${this._page === 'background-tasks'}"
         ></background-tasks>
+        <beacon-api
+          class="page"
+          ?active="${this._page === 'beacon-api'}"
+        ></beacon-api>
         <my-view404
           class="page"
           ?active="${this._page === 'view404'}"

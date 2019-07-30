@@ -35,6 +35,12 @@ const loadPage = page => dispatch => {
         // navigating to view1 after my-view1.js is loaded.
       });
       break;
+    case 'beacon-api':
+        import('../views/beacon-api.js').then(module => {
+          // Put code in here that you want to run every time when
+          // navigating to view1 after my-view1.js is loaded.
+        });
+        break;
     default:
       page = 'view404';
       import('../views/my-view404.js');

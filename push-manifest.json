@@ -21,7 +21,23 @@
       "type": "script",
       "weight": 1
     },
-    "src/views/backgroung-tasks.js": {
+    "src/views/background-tasks.js": {
+      "crossorigin": "anonymous",
+      "type": "script",
+      "weight": 1
+    },
+    "node_modules/@webcomponents/webcomponentsjs/webcomponents-loader.js": {
+      "type": "script",
+      "weight": 1
+    }
+  },
+  "/beacon-api": {
+    "src/beacon-api.js": {
+      "crossorigin": "anonymous",
+      "type": "script",
+      "weight": 1
+    },
+    "src/views/beacon-api.js": {
       "crossorigin": "anonymous",
       "type": "script",
       "weight": 1
