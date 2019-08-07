@@ -4,16 +4,12 @@ import { PageViewElement } from '../components/page-view-element.js';
 // These are the shared styles needed by this element.
 import SharedStyles from '../styles/shared-styles.js';
 
-function isHidden(el) {
-  console.log(el.offsetParent)
-  return (el.offsetParent === null)
-}
-
 class BeaconApi extends PageViewElement {
   constructor() {
     super();
 
     this.analytics = { start: performance.now(), visibility: [] };
+    console.log(performance.now());
 
     this.reportEvent = this.reportEvent.bind(this);
   }
@@ -25,17 +21,21 @@ class BeaconApi extends PageViewElement {
   async connectedCallback() {
     super.connectedCallback();
     await this.updateComplete;
-    const currentSection = this.shadowRoot.querySelector('.beacon-api h1');
-    document.addEventListener('visibilitychange', (event) => {
-      console.log(isHidden(currentSection));
-      if (isHidden(currentSection)) {
+    // Literally every time the content of the page leaves the screen
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
         this.analytics.stop = performance.now();
-        navigator.sendBeacon(
-          'http://localhost:8000/api/test',
-          JSON.stringify(this.analytics)
-        );
+        // this is where you do sendBeacon
       }
     });
+    window.onerror = function(msg, url, line, col, error) {
+      const formData = new FormData();
+      formData.append('url', url);
+      formData.append('line', line);
+      formData.append('col', col);
+      formData.append('error', error);
+      navigator.sendBeacon('../clientError', formData);
+    };
   }
 
   render() {
@@ -54,10 +54,11 @@ class BeaconApi extends PageViewElement {
 
   reportEvent(event) {
     console.log(event);
-    if (event.preventDefault) event.preventDefault();
-    else {
-      event = { timeStamp: performance.now() };
-    }
+    // if (event.preventDefault) event.preventDefault();
+    // else {
+    //   event = { timeStamp: performance.now() };
+    // }
+    console.log(event.timeStamp.thign);
     this.analytics.visibility.push({
       state: document.visibilityState,
       ts: event.timeStamp
