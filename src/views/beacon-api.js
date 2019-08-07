@@ -24,8 +24,14 @@ class BeaconApi extends PageViewElement {
     // Literally every time the content of the page leaves the screen
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') {
+        console.log('hola')
         this.analytics.stop = performance.now();
-        // this is where you do sendBeacon
+        // This is where you do sendBeacon
+        // It can be tested on a live server
+        // navigator.sendBeacon(
+        //   '/some-url-to-a-backend',
+        //   JSON.stringify(this.analytics)
+        // );
       }
     });
     window.onerror = function(msg, url, line, col, error) {
@@ -42,23 +48,14 @@ class BeaconApi extends PageViewElement {
     return html`
       <section class="beacon-api">
         <h1>Send Beacon</h1>
-        <a href="http://www.w3.org/" @click=${this.reportEvent}
-          >Example with event as the object</a
-        >
-        <button @click=${() => this.reportEvent('some event')}>
-          Example with a string as the argument
+        <button @click=${this.reportEvent}>
+          Data is recorded when this is clicked
         </button>
       </section>
     `;
   }
 
   reportEvent(event) {
-    console.log(event);
-    // if (event.preventDefault) event.preventDefault();
-    // else {
-    //   event = { timeStamp: performance.now() };
-    // }
-    console.log(event.timeStamp.thign);
     this.analytics.visibility.push({
       state: document.visibilityState,
       ts: event.timeStamp
